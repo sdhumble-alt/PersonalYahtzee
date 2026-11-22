@@ -11,6 +11,61 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet" />
+  <link id="favicon" rel="icon" type="image/png" />
+  <link id="touch-icon" rel="apple-touch-icon" />
+  <script>
+    // Favicon + home-screen icon: a logo-style "Y" with a tumbling die, drawn on a canvas.
+    // Drawn once right away, then again once the Lilita One logo font has loaded.
+    (function () {
+      var PIPS = { 3: [[28,28],[50,50],[72,72]], 5: [[28,28],[72,28],[50,50],[28,72],[72,72]] };
+      function rr(x, px, py, w, h, r) {
+        x.beginPath(); x.moveTo(px + r, py);
+        x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r);
+        x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath();
+      }
+      function die(x, cx, cy, size, rot, value) {
+        x.save(); x.translate(cx, cy); x.rotate(rot * Math.PI / 180); x.scale(size / 100, size / 100); x.translate(-50, -50);
+        x.shadowColor = "rgba(0,0,0,.4)"; x.shadowOffsetY = 6; x.shadowBlur = 8;
+        rr(x, 4, 4, 92, 92, 20); x.fillStyle = "#fffaf0"; x.fill();
+        x.shadowColor = "transparent"; x.lineWidth = 8; x.strokeStyle = "#5e060c"; x.stroke();
+        x.fillStyle = "#1d1d1f";
+        PIPS[value].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 10.5, 0, Math.PI * 2); x.fill(); });
+        x.restore();
+      }
+      function draw(size, rounded, font) {
+        var c = document.createElement("canvas"); c.width = c.height = size;
+        var x = c.getContext("2d"); x.scale(size / 100, size / 100);
+        // Red tabletop, same gradient as the page background
+        var g = x.createRadialGradient(50, 0, 0, 50, 0, 115);
+        g.addColorStop(0, "#f03030"); g.addColorStop(0.45, "#c8121c"); g.addColorStop(1, "#8c0a13");
+        rr(x, 0, 0, 100, 100, rounded ? 22 : 0); x.fillStyle = g; x.fill();
+        // The "Y" in logo style: cream letter, dark-red outline and drop shadow
+        x.save(); x.translate(38, 50); x.rotate(-8 * Math.PI / 180);
+        x.font = font; x.textAlign = "center"; x.textBaseline = "middle"; x.lineJoin = "round";
+        x.shadowColor = "rgba(0,0,0,.35)"; x.shadowOffsetY = 5; x.shadowBlur = 6;
+        x.lineWidth = 10; x.strokeStyle = "#5e060c"; x.strokeText("Y", 0, 4);
+        x.shadowColor = "transparent"; x.fillStyle = "#fff8e7"; x.fillText("Y", 0, 4);
+        x.restore();
+        // Two dice tumbling in the corner
+        die(x, 80, 30, 26, -16, 3);
+        die(x, 72, 72, 40, 14, 5);
+        return c.toDataURL("image/png");
+      }
+      function apply(font) {
+        try {
+          document.getElementById("favicon").href = draw(64, true, font);
+          document.getElementById("touch-icon").href = draw(180, false, font);
+        } catch (e) {}
+      }
+      apply('900 78px "Arial Rounded MT Bold", "Arial Black", Helvetica, sans-serif');
+      window.addEventListener("load", function () {
+        if (!document.fonts) return;
+        document.fonts.load('78px "Lilita One"').then(function (f) {
+          if (f && f.length) apply('400 78px "Lilita One"');
+        }).catch(function () {});
+      });
+    })();
+  </script>
   <style>
     :root {
       --red: #d0121f;
