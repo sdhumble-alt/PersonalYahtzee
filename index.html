@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Yahtzee" />
+  <meta name="theme-color" content="#b50f1b" />
+  <title>Yahtzee Score Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --red: #d0121f;
+      --red-dark: #8c0a13;
+      --red-deep: #5e060c;
+      --yellow: #ffd23f;
+      --yellow-dark: #d9a300;
+      --ivory: #fffaf0;
+      --cream: #f6ebd2;
+      --line: #e8d6ae;
+      --ink: #221a14;
+      --muted: #7a6a55;
+      --good: #1f8a3b;
+      --display: "Lilita One", "Arial Rounded MT Bold", "Arial Black", sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--red-dark); color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    button { -webkit-appearance: none; appearance: none; font: inherit; color: inherit; cursor: pointer; }
+    button:disabled { cursor: default; }
+
+    .bg { position: fixed; inset: 0; z-index: 0;
+      background: radial-gradient(120% 75% at 50% 0%, #f03030 0%, #c8121c 45%, #8c0a13 100%); }
+    .wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto;
+      padding: max(20px, env(safe-area-inset-top)) 16px 60px; }
+
+    /* ── Branding ─────────────────────────── */
+    .header { text-align: center; margin: 8px 0 22px; }
+    .dice-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 6px; }
+    .dice-row svg { filter: drop-shadow(0 4px 4px rgba(0,0,0,.35)); }
+    .logo {
+      font-family: var(--display); font-weight: 400; font-size: 64px; line-height: 1; margin: 0;
+      color: #fff8e7; letter-spacing: 1px; transform: rotate(-4deg);
+      text-shadow: 0 3px 0 var(--red-deep), 3px 3px 0 var(--red-deep), -3px 3px 0 var(--red-deep),
+                   0 -2px 0 var(--red-deep), 0 10px 16px rgba(0,0,0,.35);
+    }
+    .tagline { display: inline-block; margin-top: 14px; color: var(--yellow); font-weight: 800;
+      font-style: italic; letter-spacing: 2px; text-transform: uppercase; font-size: 14px;
+      text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+
+    .game-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .game-header .logo { font-size: 34px; transform: rotate(-3deg); }
+    .badge { background: var(--yellow); color: var(--red-deep); font-weight: 800; font-size: 13px;
+      border-radius: 999px; padding: 6px 14px; box-shadow: 0 3px 0 var(--yellow-dark); }
+
+    /* ── Cards ────────────────────────────── */
+    .card { background: var(--ivory); border-radius: 16px; padding: 18px; margin-bottom: 14px;
+      box-shadow: 0 6px 20px rgba(60,0,0,.35), inset 0 -3px 0 var(--line); }
+    .card.tight { padding: 12px 10px 14px; }
+    .section-title { font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--red-dark);
+      font-weight: 800; margin: 0 0 12px; }
+    .muted { color: var(--muted); }
+
+    /* ── Setup ────────────────────────────── */
+    .player-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #fff;
+      border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 8px 4px; position: relative;
+      transition: box-shadow .15s ease, transform .15s ease; }
+    .player-row.dragging { box-shadow: 0 8px 20px rgba(94,6,12,.3); transform: scale(1.02); z-index: 2; }
+    .drag-handle { touch-action: none; cursor: grab; color: #b3a283; font-size: 18px; letter-spacing: -3px;
+      padding: 6px 8px; user-select: none; -webkit-user-select: none; line-height: 1; }
+    .order-num { font-size: 12px; color: var(--muted); min-width: 12px; text-align: center; font-weight: 700; }
+    .color-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .name-input { flex: 1; min-width: 0; background: transparent; border: none; color: var(--ink);
+      font-size: 17px; font-weight: 600; outline: none; font-family: inherit; }
+    .remove-btn { background: none; border: none; color: #b3a283; font-size: 15px; padding: 0 4px; }
+    .row-btns { display: flex; gap: 8px; margin-top: 4px; }
+    .soft-btn { flex: 1; background: var(--cream); border: 1px solid var(--line); color: var(--ink);
+      border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 600; }
+    .soft-btn.dashed { background: transparent; border-style: dashed; border-color: #c9b386; }
+    .remember { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 14px; cursor: pointer; }
+    .remember input { width: 18px; height: 18px; accent-color: var(--red); margin: 0; }
+
+    .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .ref-row { display: flex; justify-content: space-between; gap: 6px; background: #fff;
+      border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 12px; }
+    .ref-row b { color: var(--red); text-align: right; }
+
+    .primary-btn { width: 100%; background: var(--yellow); color: var(--red-deep); border: none; border-radius: 14px;
+      padding: 15px; font-family: var(--display); font-size: 24px; letter-spacing: 1px;
+      box-shadow: 0 5px 0 var(--yellow-dark), 0 10px 20px rgba(0,0,0,.3); transition: transform .08s, box-shadow .08s; }
+    .primary-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--yellow-dark), 0 5px 10px rgba(0,0,0,.3); }
+    .ghost-btn { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35);
+      border-radius: 10px; padding: 9px 13px; font-size: 13px; font-weight: 600; }
+
+    /* ── Game ─────────────────────────────── */
+    .action-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; background: rgba(0,0,0,.22);
+      border-radius: 12px; padding: 8px 10px; color: #fff; }
+    .action-bar .info { flex: 1; font-size: 14px; font-weight: 600; }
+    .turn-banner { display: flex; align-items: center; gap: 10px; color: #fff; border-radius: 12px;
+      padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+    .turn-banner .who { font-weight: 800; font-size: 16px; }
+    .turn-banner .how { font-size: 12px; opacity: .9; }
+
+    /* ── Scoresheet ───────────────────────── */
+    .sheet-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table.sheet { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .sheet th, .sheet td { padding: 6px 6px; text-align: center; border-bottom: 1px solid #efe2c4; white-space: nowrap; }
+    .sheet th { font-size: 12px; font-weight: 800; border-bottom: 2px solid var(--line); max-width: 96px;
+      overflow: hidden; text-overflow: ellipsis; padding: 8px 6px; }
+    .sheet th.cur { color: #fff !important; border-radius: 10px 10px 0 0; }
+    .sheet td:first-child, .sheet th:first-child { text-align: left; position: sticky; left: 0; background: var(--ivory); z-index: 1; }
+    .sheet .cat-cell { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+    .sheet .sec td { background: var(--red); color: #fff; font-size: 11px; letter-spacing: 2px; font-weight: 800;
+      text-transform: uppercase; padding: 5px 8px; border-bottom: none; }
+    .sheet .sec td:first-child { background: var(--red); position: static; }
+    .sheet .sec span { position: sticky; left: 8px; }
+    .sheet .sum td { background: var(--cream); font-weight: 700; }
+    .sheet .sum td:first-child { background: var(--cream); }
+    .sheet .grand td { background: var(--yellow); font-weight: 900; font-size: 15px; color: var(--red-deep); border-bottom: none; }
+    .sheet .grand td:first-child { background: var(--yellow); }
+    .sheet td.cur { background: rgba(255,210,63,.16); }
+    .sheet .sum td.cur, .sheet .grand td.cur { box-shadow: inset 0 0 0 999px rgba(255,255,255,.25); }
+    .sheet td.zero { color: #b3a283; }
+    .sheet td.empty { color: #d6c7a6; }
+    .sheet td.got { color: var(--good); font-weight: 800; }
+    .sheet .togo { font-size: 10px; font-weight: 700; color: var(--muted); }
+    .sheet tr.pickable { cursor: pointer; }
+    .sheet tr.picked td:first-child { color: var(--red); }
+    .cell-btn { width: 100%; min-width: 44px; min-height: 34px; border: 2px dashed #e0b400; background: #fffbe6;
+      border-radius: 8px; color: var(--yellow-dark); font-weight: 900; font-size: 16px; line-height: 1; padding: 0; }
+    .cell-btn.sel { background: var(--yellow); border-style: solid; border-color: var(--yellow-dark); color: var(--red-deep); }
+    .cell-btn.bonus { border-style: solid; border-color: var(--red); background: #fff0ee; color: var(--red);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+    .cell-btn.bonus b { color: var(--good); font-size: 13px; }
+    .cell-btn.bonus small { font-size: 12px; font-weight: 900; }
+    .cell-btn.bonus:disabled { border: 2px dashed #e3d6b8; background: transparent; color: #d6c7a6; }
+    .cell-btn.bonus:disabled b { color: var(--good); }
+    .cell-btn.bonus.sel { background: var(--red); color: var(--yellow); }
+    .cell-btn.bonus.sel b { color: #fff; }
+
+    /* ── Score picker (bottom sheet) ──────── */
+    .overlay { position: fixed; inset: 0; z-index: 10; background: rgba(40,0,0,.45);
+      display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease-out; }
+    .picker { width: 100%; max-width: 560px; background: var(--ivory); border-radius: 20px 20px 0 0;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 30px rgba(0,0,0,.35);
+      animation: up .2s ease-out; max-height: 85vh; overflow-y: auto; }
+    @keyframes up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .picker-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; color: #fff; border-radius: 20px 20px 0 0; }
+    .picker-head .title { flex: 1; font-weight: 800; font-size: 16px; }
+    .picker-body { padding: 14px 16px 0; }
+    .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+    .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
+    .opts.six { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .opts.big { grid-template-columns: 1fr 1fr; }
+    .opts.one { grid-template-columns: 1fr; }
+    .opt { background: #fff; border: 2px solid var(--line); border-radius: 10px; padding: 10px 0 8px;
+      font-size: 20px; font-weight: 800; color: var(--ink); box-shadow: 0 2px 0 var(--line);
+      display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .opts.big .opt, .opts.one .opt { padding: 14px 0 12px; font-size: 24px; }
+    .opt small { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .opt.sel { background: var(--red); border-color: var(--red-dark); color: #fff; box-shadow: 0 2px 0 var(--red-deep); }
+    .opt.sel small { color: rgba(255,255,255,.85); }
+    .mini-dice { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 42px; margin-top: 3px; }
+    .opt { justify-content: flex-start; }
+    .dice-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+    .slot { aspect-ratio: 1; border-radius: 12px; border: 2px dashed var(--line); background: #fff;
+      display: flex; align-items: center; justify-content: center; color: #cdbb94; font-weight: 800; font-size: 16px; padding: 0; }
+    .slot.next { border-color: var(--yellow-dark); background: #fffbe6; color: var(--yellow-dark); }
+    .slot.filled { border: 2px solid var(--line); background: #fff; box-shadow: 0 2px 0 var(--line); }
+    .slot.filled svg { width: 80%; height: 80%; }
+    .dice-sum { display: flex; align-items: center; justify-content: space-between; background: var(--cream);
+      border-radius: 10px; padding: 8px 14px; margin-bottom: 10px; }
+    .dice-sum .expr { font-size: 13px; color: var(--muted); }
+    .dice-sum b { font-family: var(--display); font-weight: 400; font-size: 28px; color: var(--red); }
+    .dice-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pad-key { background: #fff; border: 2px solid var(--line); border-radius: 12px; box-shadow: 0 3px 0 var(--line);
+      padding: 10px 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 20px; font-weight: 800; transition: transform .06s; }
+    .pad-key:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+    .pad-key:disabled { opacity: .4; }
+    .pad-key.util { grid-column: span 2; font-size: 14px; font-weight: 700; color: var(--muted); background: var(--cream); }
+    .pad-key.util.clear { grid-column: span 1; color: var(--red); background: #fff0ee; border-color: #f3c9c4; box-shadow: 0 3px 0 #f3c9c4; }
+    .confirm-row { display: flex; gap: 10px; align-items: stretch; margin-top: 16px; }
+    .preview { background: var(--cream); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column;
+      justify-content: center; min-width: 92px; }
+    .preview span { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .preview b { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.05; }
+    .confirm-btn { flex: 1; border: none; border-radius: 12px; color: #fff; padding: 12px; font-size: 16px; font-weight: 800;
+      box-shadow: 0 4px 0 rgba(0,0,0,.25); }
+    .confirm-btn:disabled { background: #d8cdb6 !important; color: #8a7a5f; box-shadow: none; }
+    .note { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--good); text-align: center; }
+
+    /* ── Final ────────────────────────────── */
+    .winner { text-align: center; }
+    .winner .trophy { font-size: 48px; }
+    .winner .name { font-family: var(--display); font-size: 34px; margin: 4px 0 2px; }
+    .final-row { display: flex; justify-content: space-between; align-items: center; background: #fff;
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+    .final-row .n { font-weight: 800; font-size: 16px; }
+    .final-row .s { font-family: var(--display); font-size: 26px; color: var(--red); }
+    .final-row .r { color: var(--muted); font-weight: 700; margin-right: 10px; }
+    .btn-stack { display: flex; flex-direction: column; gap: 10px; }
+    .link-btn { background: none; border: none; color: #fff; text-decoration: underline; font-size: 14px; padding: 6px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+// ── Storage (this browser only) ─────────────────────
+const PLAYERS_KEY = "yahtzee.players.v1";
+const GAME_KEY = "yahtzee.game.v2";
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  remove(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+let nextId = 1;
+const newId = () => nextId++;
+
+const COLORS = [
+  { bg: "#c8102e" }, { bg: "#1a5fb4" }, { bg: "#2e8540" },
+  { bg: "#7b3fa0" }, { bg: "#e07a00" }, { bg: "#0f8a8a" },
+];
+const MAX_PLAYERS = 6;
+
+// ── Scoring rules ───────────────────────────────────
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+const multiples = (n) => [0, ...range(1, 6).map(f => f * n)]; // n of a kind of each face
+
+const UPPER = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes"].map((label, i) => ({
+  key: label.toLowerCase(), label, face: i + 1,
+  options: range(0, 5).map(n => n * (i + 1)),
+  sub: v => v ? "" : "scratch",
+  dice: v => [v / (i + 1), i + 1], // [how many dice, showing which face]
+  hint: `Count and add only the ${i + 1}s.`,
+}));
+const LOWER = [
+  { key: "threeKind", label: "3 of a Kind", options: multiples(3), sub: v => v ? "" : "scratch", dice: v => [3, v / 3],
+    hint: "Three of the same number: score those three dice." },
+  { key: "fourKind", label: "4 of a Kind", options: multiples(4), sub: v => v ? "" : "scratch", dice: v => [4, v / 4],
+    hint: "Four of the same number: score those four dice." },
+  { key: "fullHouse", label: "Full House", options: [0, 25], sub: v => v ? "" : "scratch",
+    hint: "Three of one number and two of another: score 25." },
+  { key: "smStraight", label: "Sm. Straight", options: [0, 30], sub: v => v ? "" : "scratch",
+    hint: "A sequence of four: score 30." },
+  { key: "lgStraight", label: "Lg. Straight", options: [0, 40], sub: v => v ? "" : "scratch",
+    hint: "A sequence of five: score 40." },
+  { key: "yahtzee", label: "Yahtzee", options: [0, 50], sub: v => v ? "" : "scratch",
+    hint: "Five of a kind: score 50." },
+  { key: "chance", label: "Chance", options: range(5, 30), sub: () => "",
+    hint: "Any combination: add the total of all 5 dice." },
+];
+const ALL = [...UPPER, ...LOWER];
+const CAT = Object.fromEntries(ALL.map(c => [c.key, c]));
+const UPPER_BONUS_AT = 63, UPPER_BONUS = 35, YAHTZEE_BONUS = 100;
+const BONUS_KEY = "yBonus"; // picking the Yahtzee box again after scoring 50
+
+const emptySheet = () => ({ ...Object.fromEntries(ALL.map(c => [c.key, null])), yBonus: 0, turns: 0 });
+
+function totals(s) {
+  const upper = UPPER.reduce((a, c) => a + (s[c.key] ?? 0), 0);
+  const bonus = upper >= UPPER_BONUS_AT ? UPPER_BONUS : 0;
+  const lower = LOWER.reduce((a, c) => a + (s[c.key] ?? 0), 0);
+  const yb = s.yBonus * YAHTZEE_BONUS;
+  const filled = ALL.filter(c => s[c.key] !== null).length;
+  const upperOpen = UPPER.filter(c => s[c.key] === null).length;
+  return { upper, bonus, upperTotal: upper + bonus, lower, yb, lowerTotal: lower + yb,
+           grand: upper + bonus + lower + yb, filled, upperOpen };
+}
+const isDone = (s) => totals(s).filled === ALL.length;
+
+// ── Persistence helpers ─────────────────────────────
+function serializePlayers(players) {
+  return players.map(p => ({ name: p.name, color: Math.max(0, COLORS.findIndex(c => c.bg === p.color.bg)) }));
+}
+function revivePlayers(list) {
+  return list.slice(0, MAX_PLAYERS).map((p, i) => ({
+    id: newId(), name: String(p.name ?? ""), color: COLORS[p.color] || COLORS[i % COLORS.length],
+  }));
+}
+function loadSavedPlayers() {
+  try {
+    const data = JSON.parse(store.get(PLAYERS_KEY));
+    if (!data || !Array.isArray(data.players) || data.players.length < 1) return null;
+    return revivePlayers(data.players);
+  } catch { return null; }
+}
+function loadGame() {
+  try {
+    const data = JSON.parse(store.get(GAME_KEY));
+    if (!data || !["game", "final"].includes(data.screen)) return null;
+    if (!Array.isArray(data.players) || !Array.isArray(data.sheets) || data.players.length !== data.sheets.length) return null;
+    return { screen: data.screen, players: revivePlayers(data.players), sheets: data.sheets,
+             turnIdx: data.turnIdx || 0, undo: Array.isArray(data.undo) ? data.undo : [] };
+  } catch { return null; }
+}
+function defaultPlayers() {
+  return [
+    { id: newId(), name: "Player 1", color: COLORS[0] },
+    { id: newId(), name: "Player 2", color: COLORS[1] },
+  ];
+}
+
+// ── Little pieces ───────────────────────────────────
+const PIPS = {
+  1: [[50, 50]],
+  2: [[28, 28], [72, 72]],
+  3: [[28, 28], [50, 50], [72, 72]],
+  4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+  6: [[28, 26], [72, 26], [28, 50], [72, 50], [28, 74], [72, 74]],
+};
+function Die({ value, size = 22, rotate = 0, fill = "#fffaf0", pip = "#1d1d1f", stroke = "#d9c49a" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true"
+      style={{ transform: rotate ? `rotate(${rotate}deg)` : undefined, flexShrink: 0 }}>
+      <rect x="4" y="4" width="92" height="92" rx="20" fill={fill} stroke={stroke} strokeWidth="5" />
+      {PIPS[value].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="9.5" fill={pip} />)}
+    </svg>
+  );
+}
+
+// Chance: enter each of the 5 dice, and the score is their total
+function ChancePad({ dice, onChange }) {
+  const total = dice.reduce((a, b) => a + b, 0);
+  const add = (f) => { if (dice.length < 5) onChange([...dice, f]); };
+  const removeAt = (i) => onChange(dice.filter((_, j) => j !== i));
+  return (
+    <div>
+      <p className="hint">Tap the value of each of your 5 dice. Tap a die above to remove it.</p>
+      <div className="dice-slots">
+        {range(0, 4).map(i => i < dice.length ? (
+          <button key={i} className="slot filled" onClick={() => removeAt(i)} aria-label={`Remove die ${i + 1} (${dice[i]})`}>
+            <Die value={dice[i]} size={40} />
+          </button>
+        ) : (
+          <div key={i} className={`slot${i === dice.length ? " next" : ""}`}>{i + 1}</div>
+        ))}
+      </div>
+      <div className="dice-sum">
+        <span className="expr">{dice.length ? dice.join(" + ") : "No dice yet"}</span>
+        <b>{total}</b>
+      </div>
+      <div className="dice-pad">
+        {range(1, 6).map(f => (
+          <button key={f} className="pad-key" disabled={dice.length >= 5} onClick={() => add(f)}>
+            <Die value={f} size={34} /><span>{f}</span>
+          </button>
+        ))}
+        <button className="pad-key util" disabled={!dice.length} onClick={() => onChange(dice.slice(0, -1))}>⌫ Undo die</button>
+        <button className="pad-key util clear" disabled={!dice.length} onClick={() => onChange([])}>Clear</button>
+      </div>
+    </div>
+  );
+}
+
+// The scorecard. When `turn` is given, the current player's open boxes become buttons.
+function Scoresheet({ players, sheets, turn = null }) {
+  const tot = sheets.map(totals);
+  const cur = turn ? turn.idx : null;
+  const canPick = (key) => !!turn && sheets[cur][key] === null;
+  const pickKey = (key) => key;
+  const bonusReady = !!turn && sheets[cur].yahtzee === 50;
+
+  // With many players the table scrolls sideways: keep the current player's column in view
+  const wrapRef = useRef(null);
+  const curRef = useRef(null);
+  useEffect(() => {
+    const w = wrapRef.current, th = curRef.current;
+    if (!w || !th) return;
+    const first = w.querySelector("th").offsetWidth;
+    if (th.offsetLeft - first < w.scrollLeft) w.scrollLeft = th.offsetLeft - first;
+    else if (th.offsetLeft + th.offsetWidth > w.scrollLeft + w.clientWidth) w.scrollLeft = th.offsetLeft + th.offsetWidth - w.clientWidth;
+  }, [cur]);
+
+  const cell = (i, key) => {
+    const v = sheets[i][key];
+    if (i === cur && canPick(key)) {
+      const k = pickKey(key);
+      const sel = turn.selCat === k;
+      return (
+        <td key={i} className="cur">
+          <button className={`cell-btn${sel ? " sel" : ""}`} onClick={e => { e.stopPropagation(); turn.onPick(k); }}>
+            {sel && turn.selVal !== null ? turn.selVal : "+"}
+          </button>
+        </td>
+      );
+    }
+    const cls = [i === cur ? "cur" : "", v === null ? "empty" : v === 0 ? "zero" : ""].join(" ");
+    return <td key={i} className={cls}>{v === null ? "·" : v}</td>;
+  };
+  const row = (c, labelNode) => {
+    const pickable = canPick(c.key);
+    return (
+      <tr key={c.key} className={`${pickable ? "pickable" : ""}${turn && turn.selCat === pickKey(c.key) && pickable ? " picked" : ""}`}
+        onClick={pickable ? () => turn.onPick(pickKey(c.key)) : undefined}>
+        <td>{labelNode}</td>
+        {players.map((_, i) => cell(i, c.key))}
+      </tr>
+    );
+  };
+  const sumRow = (label, fn, extra = "sum", clsFn = null) => (
+    <tr className={extra}>
+      <td>{label}</td>
+      {players.map((_, i) => <td key={i} className={`${i === cur ? "cur " : ""}${clsFn ? clsFn(i) : ""}`}>{fn(i)}</td>)}
+    </tr>
+  );
+  return (
+    <div className="sheet-wrap" ref={wrapRef}>
+      <table className="sheet">
+        <thead>
+          <tr>
+            <th></th>
+            {players.map((p, i) => (
+              <th key={p.id} className={i === cur ? "cur" : ""} ref={i === cur ? curRef : undefined}
+                style={i === cur ? { background: p.color.bg } : { color: p.color.bg }}>{p.name || `P${i + 1}`}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="sec"><td colSpan={players.length + 1}><span>Upper Section</span></td></tr>
+          {UPPER.map(c => row(c, <span className="cat-cell"><Die value={c.face} size={16} />{c.label}</span>))}
+          {sumRow("Subtotal", i => tot[i].upper)}
+          {sumRow(`Bonus (${UPPER_BONUS_AT}+)`, i => tot[i].bonus ? `+${UPPER_BONUS}` : tot[i].upperOpen === 0 ? "0"
+              : <span className="togo">need {UPPER_BONUS_AT - tot[i].upper}</span>,
+            "sum", i => tot[i].bonus ? "got" : "")}
+          <tr className="sec"><td colSpan={players.length + 1}><span>Lower Section</span></td></tr>
+          {LOWER.map(c => row(c, <span className="cat-cell">{c.label}</span>))}
+          <tr className={bonusReady ? "pickable" : ""} onClick={bonusReady ? () => turn.onPick(BONUS_KEY) : undefined}>
+            <td><span className="cat-cell">Yahtzee Bonus</span></td>
+            {players.map((_, i) => {
+              const yb = sheets[i].yBonus;
+              if (i === cur) {
+                const sel = turn.selCat === BONUS_KEY;
+                return (
+                  <td key={i} className="cur">
+                    <button className={`cell-btn bonus${sel ? " sel" : ""}`} disabled={!bonusReady}
+                      title={bonusReady ? "Rolled another Yahtzee" : "Score 50 in Yahtzee first"}
+                      onClick={e => { e.stopPropagation(); turn.onPick(BONUS_KEY); }}>
+                      {yb > 0 && <b>{tot[i].yb}</b>}<small>+{YAHTZEE_BONUS}</small>
+                    </button>
+                  </td>
+                );
+              }
+              return <td key={i} className={yb ? "got" : "empty"}>{yb ? `+${tot[i].yb}` : "·"}</td>;
+            })}
+          </tr>
+          {sumRow("Upper Total", i => tot[i].upperTotal)}
+          {sumRow("Lower Total", i => tot[i].lowerTotal)}
+          {sumRow("Grand Total", i => tot[i].grand, "grand")}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── App ─────────────────────────────────────────────
+function App() {
+  const [boot] = useState(loadGame);
+  const [screen, setScreen] = useState(boot ? boot.screen : "setup");
+  const [players, setPlayers] = useState(() => boot ? boot.players : (loadSavedPlayers() || defaultPlayers()));
+  const [rememberPlayers, setRememberPlayers] = useState(() => store.get(PLAYERS_KEY) !== null);
+  const [sheets, setSheets] = useState(boot ? boot.sheets : []);
+  const [turnIdx, setTurnIdx] = useState(boot ? boot.turnIdx : 0);
+  const [undo, setUndo] = useState(boot ? boot.undo : []);
+
+  const [selCat, setSelCat] = useState(null);
+  const [selVal, setSelVal] = useState(null);
+  const [chanceDice, setChanceDice] = useState([]);
+  const resetSel = () => { setSelCat(null); setSelVal(null); setChanceDice([]); };
+  const setChanceDiceAndScore = (dice) => {
+    setChanceDice(dice);
+    setSelVal(dice.length === 5 ? dice.reduce((a, b) => a + b, 0) : null);
+  };
+
+  // Keep the saved player list in step while "Remember" is on
+  useEffect(() => {
+    if (!rememberPlayers) return;
+    store.set(PLAYERS_KEY, JSON.stringify({ players: serializePlayers(players) }));
+  }, [players, rememberPlayers]);
+
+  // Autosave the game in progress so a refresh or locked phone doesn't lose it
+  useEffect(() => {
+    if (screen === "setup") { store.remove(GAME_KEY); return; }
+    store.set(GAME_KEY, JSON.stringify({ screen, players: serializePlayers(players), sheets, turnIdx, undo: undo.slice(-60) }));
+  }, [screen, players, sheets, turnIdx, undo]);
+
+  const toggleRemember = () => {
+    if (rememberPlayers) store.remove(PLAYERS_KEY);
+    setRememberPlayers(!rememberPlayers);
+  };
+
+  // Drag to reorder (pointer events: touch and mouse)
+  const rowRefs = useRef({});
+  const playersRef = useRef(players);
+  playersRef.current = players;
+  const [dragId, setDragId] = useState(null);
+  useEffect(() => {
+    if (dragId === null) return;
+    const move = (e) => {
+      const list = playersRef.current;
+      const from = list.findIndex(p => p.id === dragId);
+      if (from < 0) return;
+      let to = from;
+      list.forEach((p, j) => {
+        const el = rowRefs.current[p.id];
+        if (!el || j === from) return;
+        const r = el.getBoundingClientRect();
+        const mid = r.top + r.height / 2;
+        if (j < from && e.clientY < mid) to = Math.min(to, j);
+        if (j > from && e.clientY > mid) to = Math.max(to, j);
+      });
+      if (to !== from) {
+        const next = [...list];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        playersRef.current = next;
+        setPlayers(next);
+      }
+    };
+    const end = () => setDragId(null);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [dragId]);
+
+  // Setup actions
+  const addPlayer = () => {
+    if (players.length >= MAX_PLAYERS) return;
+    const used = players.map(p => p.color.bg);
+    const color = COLORS.find(c => !used.includes(c.bg)) || COLORS[players.length % COLORS.length];
+    setPlayers([...players, { id: newId(), name: `Player ${players.length + 1}`, color }]);
+  };
+  const removePlayer = (i) => { if (players.length > 1) setPlayers(players.filter((_, idx) => idx !== i)); };
+  const updateName = (i, val) => setPlayers(players.map((p, idx) => idx === i ? { ...p, name: val } : p));
+  const shufflePlayers = () => {
+    const next = [...players];
+    for (let i = next.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [next[i], next[j]] = [next[j], next[i]];
+    }
+    setPlayers(next);
+  };
+
+  const startGame = () => {
+    setSheets(players.map(emptySheet));
+    setTurnIdx(0);
+    setUndo([]);
+    resetSel();
+    setScreen("game");
+    window.scrollTo(0, 0);
+  };
+
+  // Game actions
+  const nextTurnFrom = (list, from) => {
+    for (let k = 1; k <= players.length; k++) {
+      const j = (from + k) % players.length;
+      if (!isDone(list[j])) return j;
+    }
+    return from;
+  };
+
+  const pickCat = (key) => {
+    setSelCat(key);
+    setSelVal(key === BONUS_KEY ? YAHTZEE_BONUS : null);
+    setChanceDice([]);
+  };
+
+  const confirmEntry = () => {
+    if (selCat === null || selVal === null) return;
+    setUndo(u => [...u, { sheets, turnIdx }].slice(-60));
+    const next = sheets.map((s, i) => {
+      if (i !== turnIdx) return s;
+      const turns = (s.turns ?? 0) + 1;
+      return selCat === BONUS_KEY ? { ...s, yBonus: s.yBonus + 1, turns } : { ...s, [selCat]: selVal, turns };
+    });
+    setSheets(next);
+    resetSel();
+    if (next.every(isDone)) { setScreen("final"); window.scrollTo(0, 0); return; }
+    setTurnIdx(nextTurnFrom(next, turnIdx));
+  };
+
+  const undoLast = () => {
+    if (undo.length === 0) return;
+    const prev = undo[undo.length - 1];
+    setUndo(undo.slice(0, -1));
+    setSheets(prev.sheets);
+    setTurnIdx(prev.turnIdx);
+    resetSel();
+    setScreen("game");
+  };
+
+  const endGame = () => {
+    if (!window.confirm("End this game now and see the final scores?")) return;
+    resetSel();
+    setScreen("final");
+    window.scrollTo(0, 0);
+  };
+
+  // ── SETUP ──────────────────────────────────────────
+  if (screen === "setup") return (
+    <>
+      <div className="bg" />
+      <div className="wrap">
+        <div className="header">
+          <div className="dice-row">
+            <Die value={5} size={40} rotate={-12} />
+            <Die value={3} size={40} rotate={8} />
+            <Die value={6} size={40} rotate={-4} />
+          </div>
+          <h1 className="logo">Yahtzee</h1>
+          <div className="tagline">Score Tracker</div>
+        </div>
+
+        <div className="card">
+          <h2 className="section-title">Players (in turn order)</h2>
+          {players.map((p, i) => (
+            <div key={p.id} ref={el => { rowRefs.current[p.id] = el; }}
+              className={`player-row${dragId === p.id ? " dragging" : ""}`}
+              style={{ borderLeft: `5px solid ${p.color.bg}` }}>
+              <div className="drag-handle" title="Drag to reorder"
+                onPointerDown={e => { e.preventDefault(); setDragId(p.id); }}>⋮⋮</div>
+              <span className="order-num">{i + 1}</span>
+              <div className="color-dot" style={{ background: p.color.bg }} />
+              <input className="name-input" value={p.name}
+                onChange={e => updateName(i, e.target.value)}
+                onFocus={e => e.target.select()}
+                placeholder={`Player ${i + 1}`} />
+              {players.length > 1 && (
+                <button className="remove-btn" onClick={() => removePlayer(i)} aria-label={`Remove ${p.name}`}>✕</button>
+              )}
+            </div>
+          ))}
+          <div className="row-btns">
+            {players.length < MAX_PLAYERS && (
+              <button className="soft-btn dashed" onClick={addPlayer}>+ Add Player</button>
+            )}
+            {players.length > 1 && (
+              <button className="soft-btn" onClick={shufflePlayers}>🔀 Shuffle Order</button>
+            )}
+          </div>
+          <label className="remember">
+            <input type="checkbox" checked={rememberPlayers} onChange={toggleRemember} />
+            <span>Remember players on this device</span>
+          </label>
+        </div>
+
+        <div className="card">
+          <h2 className="section-title">Quick Reference</h2>
+          <div className="ref-grid">
+            {[["Ones – Sixes", "sum of that #"], ["Upper bonus (63+)", "+35"],
+              ["3 of a Kind", "the 3 dice"], ["4 of a Kind", "the 4 dice"],
+              ["Full House", "25"], ["Sm. Straight", "30"],
+              ["Lg. Straight", "40"], ["Yahtzee", "50"],
+              ["Each extra Yahtzee", "+100"], ["Chance", "sum of dice"],
+            ].map(([label, val]) => (
+              <div key={label} className="ref-row"><span>{label}</span><b>{val}</b></div>
+            ))}
+          </div>
+        </div>
+
+        <button className="primary-btn" onClick={startGame}>Start Game</button>
+      </div>
+    </>
+  );
+
+  const tots = sheets.map(totals);
+
+  // ── FINAL ──────────────────────────────────────────
+  if (screen === "final") {
+    const allDone = sheets.every(isDone);
+    const best = Math.max(...tots.map(t => t.grand));
+    const winners = players.filter((_, i) => tots[i].grand === best);
+    const ranked = players.map((p, i) => ({ p, i, s: tots[i].grand })).sort((a, b) => b.s - a.s);
+    return (
+      <>
+        <div className="bg" />
+        <div className="wrap">
+          <div className="header">
+            <div className="dice-row">
+              {[-10, 6, -3, 9, -7].map((r, i) => <Die key={i} value={6} size={30} rotate={r} />)}
+            </div>
+            <h1 className="logo" style={{ fontSize: 48 }}>Game Over</h1>
+            {!allDone && <div className="tagline">Ended early</div>}
+          </div>
+
+          <div className="card winner">
+            <div className="trophy">🏆</div>
+            {winners.length === 1 ? (
+              <div className="name" style={{ color: winners[0].color.bg }}>{winners[0].name}</div>
+            ) : (
+              <div className="name" style={{ color: "var(--red)" }}>Tie: {winners.map(w => w.name).join(" & ")}</div>
+            )}
+            <div className="muted">Final score: <b>{best}</b></div>
+          </div>
+
+          {players.length > 1 && (
+            <div className="card">
+              <h2 className="section-title">Final Standings</h2>
+              {ranked.map(({ p, s }) => (
+                <div key={p.id} className="final-row" style={{ borderLeft: `5px solid ${p.color.bg}` }}>
+                  <span><span className="r">{ranked.findIndex(r => r.s === s) + 1}</span>
+                    <span className="n" style={{ color: p.color.bg }}>{p.name}</span></span>
+                  <span className="s">{s}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="card tight">
+            <h2 className="section-title" style={{ marginLeft: 6 }}>Scorecard</h2>
+            <Scoresheet players={players} sheets={sheets} />
+          </div>
+
+          <div className="btn-stack">
+            {!allDone && <button className="primary-btn" onClick={() => setScreen("game")}>Resume Game</button>}
+            <button className="primary-btn" onClick={startGame}>Play Again</button>
+            <button className="ghost-btn" style={{ padding: 13, fontSize: 15 }} onClick={() => setScreen("setup")}>Change Players</button>
+            {allDone && undo.length > 0 && (
+              <button className="link-btn" onClick={undoLast}>↶ Fix last entry</button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── GAME ───────────────────────────────────────────
+  const current = players[turnIdx];
+  const sheet = sheets[turnIdx];
+  const t = tots[turnIdx];
+  const round = Math.min(Math.min(...sheets.map(s => s.turns ?? 0)) + 1, 99);
+  const isBonus = selCat === BONUS_KEY;
+  const cat = selCat && !isBonus ? CAT[selCat] : null;
+  const unlocksBonus = cat && cat.face && selVal !== null && t.upper < UPPER_BONUS_AT && t.upper + selVal >= UPPER_BONUS_AT;
+  const lastEntryOfGame = !isBonus && t.filled === ALL.length - 1 && sheets.every((s, i) => i === turnIdx || isDone(s));
+  const nextIdx = nextTurnFrom(sheets, turnIdx);
+  const diceLeft = 5 - chanceDice.length;
+  const confirmLabel = selVal === null
+    ? (selCat === "chance" ? `Enter ${diceLeft} more ${diceLeft === 1 ? "die" : "dice"}` : "Pick a score")
+    : lastEntryOfGame ? "Score & Finish Game"
+    : players.length === 1 || nextIdx === turnIdx ? `Score ${selVal}`
+    : `Score → ${players[nextIdx].name}`;
+
+  return (
+    <>
+      <div className="bg" />
+      <div className="wrap">
+        <div className="game-header">
+          <h1 className="logo">Yahtzee</h1>
+          <span className="badge">Round {round}</span>
+        </div>
+
+        <div className="action-bar">
+          <span className="info">{players.length > 1 ? `Turn ${(sheet.turns ?? 0) + 1} for ${current.name}` : `Turn ${(sheet.turns ?? 0) + 1}`}</span>
+          {undo.length > 0 && <button className="ghost-btn" onClick={undoLast}>↶ Undo</button>}
+          <button className="ghost-btn" onClick={endGame}>End Game</button>
+        </div>
+
+        <div className="turn-banner" style={{ background: current.color.bg }}>
+          <Die value={5} size={26} />
+          <div>
+            <div className="who">{current.name}'s turn · {t.grand} pts</div>
+            <div className="how">Tap a <b>+</b> box in your column to score it</div>
+          </div>
+        </div>
+
+        <div className="card tight">
+          <Scoresheet players={players} sheets={sheets}
+            turn={{ idx: turnIdx, selCat, selVal, onPick: pickCat }} />
+        </div>
+      </div>
+
+      {selCat && (
+        <div className="overlay" onClick={resetSel}>
+          <div className="picker" onClick={e => e.stopPropagation()}>
+            <div className="picker-head" style={{ background: current.color.bg }}>
+              {cat && cat.face ? <Die value={cat.face} size={24} /> : <Die value={6} size={24} />}
+              <span className="title">{isBonus ? "Bonus Yahtzee" : cat.label} · {current.name}</span>
+              <button className="ghost-btn" style={{ padding: "5px 10px", fontSize: 12 }} onClick={resetSel}>Cancel</button>
+            </div>
+            <div className="picker-body">
+              {isBonus ? (
+                <>
+                  <p className="hint">Rolled another Yahtzee! Add a {YAHTZEE_BONUS}-point bonus for this turn. (Bonuses so far: {sheet.yBonus})</p>
+                  <div className="opts one">
+                    <button className="opt sel">+{YAHTZEE_BONUS}<small>bonus Yahtzee</small></button>
+                  </div>
+                </>
+              ) : selCat === "chance" ? (
+                <ChancePad dice={chanceDice} onChange={setChanceDiceAndScore} />
+              ) : (
+                <>
+                  <p className="hint">{cat.hint}{cat.options[0] === 0 ? " Choose 0 to scratch it." : ""}</p>
+                  <div className={`opts${cat.options.length === 2 ? " big" : cat.options.length === 6 || cat.options.length === 7 ? " six" : ""}`}
+                    style={cat.options.length === 7 ? { gridTemplateColumns: "repeat(7, 1fr)" } : undefined}>
+                    {cat.options.map(v => (
+                      <button key={v} className={`opt${selVal === v ? " sel" : ""}`} onClick={() => setSelVal(v)}>
+                        {v}
+                        {cat.dice && v > 0 ? (
+                          <span className="mini-dice">
+                            {range(1, cat.dice(v)[0]).map(n => <Die key={n} value={cat.dice(v)[1]} size={12} stroke="#c9b386" />)}
+                          </span>
+                        ) : cat.sub(v) ? <small>{cat.sub(v)}</small> : null}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="confirm-row">
+                <div className="preview">
+                  <span>Turn score</span>
+                  <b style={{ color: selVal ? "var(--good)" : "var(--muted)" }}>{selVal === null ? "–" : `+${selVal}`}</b>
+                </div>
+                <button className="confirm-btn" style={{ background: current.color.bg }}
+                  disabled={selVal === null} onClick={confirmEntry}>{confirmLabel}</button>
+              </div>
+              {unlocksBonus && <div className="note">🎉 This unlocks the +{UPPER_BONUS} upper bonus!</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
