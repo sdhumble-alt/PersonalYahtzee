@@ -188,7 +188,10 @@
     .sheet tr.pickable { cursor: pointer; }
     .sheet tr.picked td:first-child { color: var(--red); }
     .cell-btn { width: 100%; min-width: 44px; min-height: 34px; border: 2px dashed #e0b400; background: #fffbe6;
-      border-radius: 8px; color: var(--yellow-dark); font-weight: 900; font-size: 16px; line-height: 1; padding: 0; }
+      border-radius: 8px; color: var(--yellow-dark); font-weight: 900; font-size: 16px; line-height: 1; padding: 0 6px;
+      white-space: nowrap; }
+    .cell-lbl { font-size: 11px; font-weight: 800; color: #a87e00; }
+    .wrap.game .cell-lbl { font-size: 12px; }
     .cell-btn.sel { background: var(--yellow); border-style: solid; border-color: var(--yellow-dark); color: var(--red-deep); }
     .cell-btn.bonus { border-style: solid; border-color: var(--red); background: #fff0ee; color: var(--red);
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
@@ -503,7 +506,7 @@ function Scoresheet({ players, sheets, turn = null }) {
       return (
         <td key={i} className="cur">
           <button className={`cell-btn${sel ? " sel" : ""}`} onClick={e => { e.stopPropagation(); turn.onPick(k); }}>
-            {sel && turn.selVal !== null ? turn.selVal : "+"}
+            {sel && turn.selVal !== null ? turn.selVal : <>+ <span className="cell-lbl">{CAT[key].label}</span></>}
           </button>
         </td>
       );
